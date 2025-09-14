@@ -1,4 +1,4 @@
-(without K8S Stage)
+
 pipeline {
     agent any
     tools {
@@ -16,21 +16,21 @@ pipeline {
         }
         stage('Checkout from Git') {
             steps {
-                git branch: 'main', url: 'https://github.com/KastroVKiran/Book-My-Show.git'
-                sh 'ls -la'  // Verify files after checkout
+                git branch: 'main', url: 'https://github.com/sulekha127/Book-My-Show.git'
+                sh 'ls -la' // Verify files after checkout
             }
         }
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('sonar-server') {
-                    sh ''' 
+                    sh '''
                     $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=BMS \
-                    -Dsonar.projectKey=BMS 
+                    -Dsonar.projectKey=BMS
                     '''
                 }
             }
         }
-        stage('Quality Gate') {
+ stage('Quality Gate') {
             steps {
                 script {
                     waitForQualityGate abortPipeline: false, credentialsId: 'Sonar-token'
@@ -41,10 +41,10 @@ pipeline {
             steps {
                 sh '''
                 cd bookmyshow-app
-                ls -la  # Verify package.json exists
+                ls -la # Verify package.json exists
                 if [ -f package.json ]; then
-                    rm -rf node_modules package-lock.json  # Remove old dependencies
-                    npm install  # Install fresh dependencies
+                    rm -rf node_modules package-lock.json # Remove old dependencies
+                    npm install # Install fresh dependencies
                 else
                     echo "Error: package.json not found in bookmyshow-app!"
                     exit 1
@@ -54,8 +54,9 @@ pipeline {
         }
         stage('OWASP FS Scan') {
             steps {
-                dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'
-                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+ dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit',
+                odcInstallation: 'DC'
+                dependencyCheckPublisher pattern: '/dependency-check-report.xml'
             }
         }
         stage('Trivy FS Scan') {
@@ -66,13 +67,12 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 script {
-                    withDockerRegistry(credentialsId: 'docker', toolName: 'docker') {
-                        sh ''' 
+withDockerRegistry(credentialsId: 'docker', toolName: 'docker') {
+                        sh '''
                         echo "Building Docker image..."
-                        docker build --no-cache -t kastrov/bms:latest -f bookmyshow-app/Dockerfile bookmyshow-app
-
+                        docker build --no-cache -t sulekhaa/bms:latest -f bookmyshow-app/Dockerfile bookmyshow-app
                         echo "Pushing Docker image to registry..."
-                        docker push kastrov/bms:latest
+                        docker push sulekhaa/bms:latest
                         '''
                     }
                 }
@@ -80,19 +80,16 @@ pipeline {
         }
         stage('Deploy to Container') {
             steps {
-                sh ''' 
+                sh '''
                 echo "Stopping and removing old container..."
                 docker stop bms || true
                 docker rm bms || true
-
                 echo "Running new container on port 3000..."
-                docker run -d --restart=always --name bms -p 3000:3000 kastrov/bms:latest
-
+                docker run -d --restart=always --name bms -p 3000:3000 sulekhaa/bms:latest
                 echo "Checking running containers..."
                 docker ps -a
-
                 echo "Fetching logs..."
-                sleep 5  # Give time for the app to start
+                sleep 5 # Give time for the app to start
                 docker logs bms
                 '''
             }
@@ -101,12 +98,13 @@ pipeline {
     post {
         always {
             emailext attachLog: true,
-                subject: "'${currentBuild.result}'",
-                body: "Project: ${env.JOB_NAME}<br/>" +
-                      "Build Number: ${env.BUILD_NUMBER}<br/>" +
-                      "URL: ${env.BUILD_URL}<br/>",
-                to: 'kastrokiran@gmail.com',
-                attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
+            subject: "'${currentBuild.result}'",
+            body: "Project: ${env.JOB_NAME}<br/>" +
+                  "Build Number: ${env.BUILD_NUMBER}<br/>" +
+                  "URL: ${env.BUILD_URL}<br/>",
+            to: 'sulekhachaubey821101@gmail.com',
+attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
         }
     }
 }
+
